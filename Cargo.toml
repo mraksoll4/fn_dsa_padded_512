@@ -1,0 +1,21 @@
+[package]
+name = "fn-dsa-padded-512"
+version = "0.1.0"
+edition = "2021"
+description = "Rust wrapper for FN-DSA-PADDED-512 (FALCON-512-PADDED) post-quantum digital signature algorithm"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mraksoll4/fn_dsa_padded_512"
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+cc = "1.0"
+
+[lib]
+name = "fn_dsa_padded_512"
+path = "rust/lib.rs"
+
+[[test]]
+name = "comprehensive"
+path = "tests/comprehensive_test.rs"

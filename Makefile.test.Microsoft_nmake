@@ -1,0 +1,21 @@
+# Makefile.test.Microsoft_nmake
+!include Makefile.Microsoft_nmake
+
+TEST_EXECUTABLE=$(BUILD_DIR)\test_fndsapadded512.exe
+TEST_OBJECTS=$(BUILD_DIR)\test_fndsapadded512.obj
+
+# Explicit rule for test object
+$(BUILD_DIR)\test_fndsapadded512.obj: tests\test_fndsapadded512.c $(BUILD_DIR)
+    $(CC) $(CFLAGS) /c /Fo$@ tests\test_fndsapadded512.c
+
+$(TEST_EXECUTABLE): $(TEST_OBJECTS) $(LIB_PATH)
+    LINK.EXE /NOLOGO /OUT:$@ $(TEST_OBJECTS) $(LIB_PATH) advapi32.lib
+
+test: $(TEST_EXECUTABLE)
+    $(TEST_EXECUTABLE)
+
+clean_test:
+    if exist $(BUILD_DIR)\test_fndsapadded512.obj del $(BUILD_DIR)\test_fndsapadded512.obj
+    if exist $(TEST_EXECUTABLE) del $(TEST_EXECUTABLE)
+
+clean_all: clean clean_test

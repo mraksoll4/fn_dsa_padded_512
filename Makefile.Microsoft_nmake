@@ -1,23 +1,68 @@
 # This Makefile can be used with Microsoft Visual Studio's nmake using the command:
 #    nmake /f Makefile.Microsoft_nmake
 
-LIBRARY=libfalcon-padded-512_clean.lib
-OBJECTS=codec.obj common.obj fft.obj fpr.obj keygen.obj pqclean.obj rng.obj sign.obj vrfy.obj
+# Makefile.Microsoft_nmake
+# This Makefile can be used with Microsoft Visual Studio's nmake
 
-# Warning C4146 is raised when a unary minus operator is applied to an
-# unsigned type; this has nonetheless been standard and portable for as
-# long as there has been a C standard, and we do that a lot, especially
-# for constant-time computations. Thus, we disable that spurious warning.
-CFLAGS=/nologo /I ..\..\..\common /O /W4 /wd4146 /WX
+LIBRARY=libfn-dsa-padded-512_clean.lib
+BUILD_DIR=build
+LIB_PATH=$(BUILD_DIR)\$(LIBRARY)
 
-all: $(LIBRARY)
+# Object files in build directory
+COMMON_OBJECTS=$(BUILD_DIR)\fips202.obj $(BUILD_DIR)\randombytes.obj $(BUILD_DIR)\memory_cleanse.obj
+FNDSAPADDED512_OBJECTS=$(BUILD_DIR)\codec.obj $(BUILD_DIR)\common.obj $(BUILD_DIR)\fft.obj $(BUILD_DIR)\fpr.obj $(BUILD_DIR)\keygen.obj $(BUILD_DIR)\pqclean.obj $(BUILD_DIR)\rng.obj $(BUILD_DIR)\sign.obj $(BUILD_DIR)\vrfy.obj
+OBJECTS=$(COMMON_OBJECTS) $(FNDSAPADDED512_OBJECTS)
 
-# Make sure objects are recompiled if headers change.
-$(OBJECTS): *.h
+CFLAGS=/nologo /O2 /W4 /WX /wd4146 /Isrc\common /Isrc\fndsapadded512
 
-$(LIBRARY): $(OBJECTS)
-	LIB.EXE /NOLOGO /WX /OUT:$@ $**
+all: $(BUILD_DIR) $(LIB_PATH)
+
+$(BUILD_DIR):
+    if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+
+# Explicit rules for common objects
+$(BUILD_DIR)\fips202.obj: src\common\fips202.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\common\fips202.c
+
+$(BUILD_DIR)\randombytes.obj: src\common\randombytes.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\common\randombytes.c
+
+$(BUILD_DIR)\memory_cleanse.obj: src\common\memory_cleanse.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\common\memory_cleanse.c
+
+# Explicit rules for fndsapadded512 objects
+$(BUILD_DIR)\codec.obj: src\fndsapadded512\codec.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\codec.c
+
+$(BUILD_DIR)\common.obj: src\fndsapadded512\common.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\common.c
+
+$(BUILD_DIR)\fft.obj: src\fndsapadded512\fft.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\fft.c
+
+$(BUILD_DIR)\fpr.obj: src\fndsapadded512\fpr.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\fpr.c
+
+$(BUILD_DIR)\keygen.obj: src\fndsapadded512\keygen.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\keygen.c
+
+$(BUILD_DIR)\pqclean.obj: src\fndsapadded512\pqclean.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\pqclean.c
+
+$(BUILD_DIR)\rng.obj: src\fndsapadded512\rng.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\rng.c
+
+$(BUILD_DIR)\sign.obj: src\fndsapadded512\sign.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\sign.c
+
+$(BUILD_DIR)\vrfy.obj: src\fndsapadded512\vrfy.c
+    $(CC) $(CFLAGS) /c /Fo$@ src\fndsapadded512\vrfy.c
+
+# Make sure objects are recompiled if headers change
+$(OBJECTS): src\common\*.h src\fndsapadded512\*.h
+
+$(LIB_PATH): $(OBJECTS)
+    LIB.EXE /NOLOGO /WX /OUT:$@ $(OBJECTS)
 
 clean:
-    -DEL $(OBJECTS)
-    -DEL $(LIBRARY)
+    if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
