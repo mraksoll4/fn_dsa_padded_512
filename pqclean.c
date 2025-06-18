@@ -4,9 +4,11 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "api.h"
 #include "inner.h"
+#include "memory_cleanse.h"
 
 #define NONCELEN   40
 
@@ -57,6 +59,7 @@ PQCLEAN_FALCONPADDED512_CLEAN_crypto_sign_keypair(
     randombytes(seed, sizeof seed);
     inner_shake256_init(&rng);
     inner_shake256_inject(&rng, seed, sizeof seed);
+    memory_cleanse(seed, sizeof(seed));
     inner_shake256_flip(&rng);
     PQCLEAN_FALCONPADDED512_CLEAN_keygen(&rng, f, g, F, NULL, h, 9, tmp.b);
     inner_shake256_ctx_release(&rng);
@@ -70,6 +73,11 @@ PQCLEAN_FALCONPADDED512_CLEAN_crypto_sign_keypair(
             sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u,
             f, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9]);
     if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
         return -1;
     }
     u += v;
@@ -77,6 +85,11 @@ PQCLEAN_FALCONPADDED512_CLEAN_crypto_sign_keypair(
             sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u,
             g, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9]);
     if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
         return -1;
     }
     u += v;
@@ -84,10 +97,195 @@ PQCLEAN_FALCONPADDED512_CLEAN_crypto_sign_keypair(
             sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u,
             F, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_FG_bits[9]);
     if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
         return -1;
     }
     u += v;
     if (u != PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        return -1;
+    }
+    memory_cleanse(f, sizeof(f));
+    memory_cleanse(g, sizeof(g));
+    memory_cleanse(F, sizeof(F));
+
+    /*
+     * Encode public key.
+     */
+    pk[0] = 0x00 + 9;
+    v = PQCLEAN_FALCONPADDED512_CLEAN_modq_encode(
+            pk + 1, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_PUBLICKEYBYTES - 1,
+            h, 9);
+    if (v != PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_PUBLICKEYBYTES - 1) {
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        return -1;
+    }
+    memory_cleanse(h, sizeof(h));
+    memory_cleanse(tmp.b, sizeof(tmp.b));
+    return 0;
+}
+
+/* keypair from fixed seed*/
+int
+PQCLEAN_FALCONPADDED512_CLEAN_crypto_sign_keypair_from_fseed(
+    uint8_t *pk, uint8_t *sk, uint8_t *seed) {
+    union {
+        uint8_t b[FALCON_KEYGEN_TEMP_9];
+        uint64_t dummy_u64;
+        fpr dummy_fpr;
+    } tmp;
+    int8_t f[512], g[512], F[512];
+    uint16_t h[512];
+    inner_shake256_context rng;
+    size_t u, v;
+
+    if (seed == NULL) {
+        return -1;  // Error if seed is NULL
+    }
+
+    /*
+     * Generate key pair.
+     */
+    inner_shake256_init(&rng);
+    inner_shake256_inject(&rng, seed, 48);
+    memory_cleanse(seed, 48);
+    inner_shake256_flip(&rng);
+    PQCLEAN_FALCONPADDED512_CLEAN_keygen(&rng, f, g, F, NULL, h, 9, tmp.b);
+    inner_shake256_ctx_release(&rng);
+
+    /*
+     * Encode private key.
+     */
+    sk[0] = 0x50 + 9;
+    u = 1;
+    v = PQCLEAN_FALCONPADDED512_CLEAN_trim_i8_encode(
+            sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u,
+            f, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9]);
+    if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        return -1;
+    }
+    u += v;
+    v = PQCLEAN_FALCONPADDED512_CLEAN_trim_i8_encode(
+            sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u,
+            g, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9]);
+    if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        return -1;
+    }
+    u += v;
+    v = PQCLEAN_FALCONPADDED512_CLEAN_trim_i8_encode(
+            sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u,
+            F, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_FG_bits[9]);
+    if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        return -1;
+    }
+    u += v;
+    if (u != PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        return -1;
+    }
+    memory_cleanse(f, sizeof(f));
+    memory_cleanse(g, sizeof(g));
+    memory_cleanse(F, sizeof(F));
+
+    /*
+     * Encode public key.
+     */
+    pk[0] = 0x00 + 9;
+    v = PQCLEAN_FALCONPADDED512_CLEAN_modq_encode(
+            pk + 1, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_PUBLICKEYBYTES - 1,
+            h, 9);
+    if (v != PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_PUBLICKEYBYTES - 1) {
+        memory_cleanse(h, sizeof(h));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        return -1;
+    }
+    memory_cleanse(h, sizeof(h));
+    memory_cleanse(tmp.b, sizeof(tmp.b));
+    return 0;
+}
+
+/*
+ * This function reconstructs the public key from a given private key.
+ * It decodes the private key components (f and g) from the secret key
+ * and uses them to regenerate the corresponding public key (h).
+ * The generated public key is then encoded into the provided pk array.
+ * 
+ * public (pk):  The output buffer where the public key will be stored (must be at least PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES in size).
+ * private (sk):  The input secret key (private key) in byte array format (must be PQCLEAN_FALCON512_CLEAN_CRYPTO_SECRETKEYBYTES in size).
+ * Return value: 0 on success, -1 on error.
+ */
+int
+PQCLEAN_FALCONPADDED512_CLEAN_crypto_sign_pubkey_from_privkey(
+    uint8_t *pk, const uint8_t *sk) {
+    union {
+        uint8_t b[FALCON_KEYGEN_TEMP_9];
+        uint64_t dummy_u64;
+        fpr dummy_fpr;
+    } tmp;
+    int8_t f[512], g[512];
+    uint16_t h[512];
+    size_t u, v;
+
+    /*
+     * Decode the private key.
+     */
+    if (sk[0] != 0x50 + 9) {
+        return -1;
+    }
+    u = 1;
+    v = PQCLEAN_FALCONPADDED512_CLEAN_trim_i8_decode(
+            f, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9],
+            sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u);
+    if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        return -1;
+    }
+    u += v;
+    v = PQCLEAN_FALCONPADDED512_CLEAN_trim_i8_decode(
+            g, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9],
+            sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u);
+    if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        return -1;
+    }
+
+    /*
+     * Reconstruct the public key using f and g by calling the compute_public function.
+     */
+    if (!PQCLEAN_FALCONPADDED512_CLEAN_compute_public(h, f, g, 9, tmp.b)) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        memory_cleanse(h, sizeof(h));
         return -1;
     }
 
@@ -99,9 +297,17 @@ PQCLEAN_FALCONPADDED512_CLEAN_crypto_sign_keypair(
             pk + 1, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_PUBLICKEYBYTES - 1,
             h, 9);
     if (v != PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_PUBLICKEYBYTES - 1) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(tmp.b, sizeof(tmp.b));
+        memory_cleanse(h, sizeof(h));
         return -1;
     }
-
+    // Securely clear sensitive buffers
+    memory_cleanse(f, sizeof(f));
+    memory_cleanse(g, sizeof(g));
+    memory_cleanse(tmp.b, sizeof(tmp.b));
+    memory_cleanse(h, sizeof(h));
     return 0;
 }
 
@@ -146,6 +352,7 @@ do_sign(uint8_t *nonce, uint8_t *sigbuf, size_t sigbuflen,
             f, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9],
             sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u);
     if (v == 0) {
+        memory_cleanse(f, sizeof(f));
         return -1;
     }
     u += v;
@@ -153,6 +360,8 @@ do_sign(uint8_t *nonce, uint8_t *sigbuf, size_t sigbuflen,
             g, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_fg_bits[9],
             sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u);
     if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
         return -1;
     }
     u += v;
@@ -160,13 +369,24 @@ do_sign(uint8_t *nonce, uint8_t *sigbuf, size_t sigbuflen,
             F, 9, PQCLEAN_FALCONPADDED512_CLEAN_max_FG_bits[9],
             sk + u, PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES - u);
     if (v == 0) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
         return -1;
     }
     u += v;
     if (u != PQCLEAN_FALCONPADDED512_CLEAN_CRYPTO_SECRETKEYBYTES) {
+        memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
         return -1;
     }
     if (!PQCLEAN_FALCONPADDED512_CLEAN_complete_private(G, f, g, F, 9, tmp.b)) {
+		memory_cleanse(f, sizeof(f));
+        memory_cleanse(g, sizeof(g));
+        memory_cleanse(F, sizeof(F));
+        memory_cleanse(G, sizeof(G));
+        memory_cleanse(tmp.b, sizeof(tmp.b));    
         return -1;
     }
 
@@ -203,6 +423,13 @@ do_sign(uint8_t *nonce, uint8_t *sigbuf, size_t sigbuflen,
         if (v != 0) {
             inner_shake256_ctx_release(&sc);
             memset(sigbuf + v, 0, sigbuflen - v);
+            memory_cleanse(f, sizeof(f));
+            memory_cleanse(g, sizeof(g)); 
+            memory_cleanse(F, sizeof(F));
+            memory_cleanse(G, sizeof(G));
+            memory_cleanse(&r, sizeof(r));
+            memory_cleanse(seed, sizeof(seed));
+            memory_cleanse(tmp.b, sizeof(tmp.b));
             return 0;
         }
     }

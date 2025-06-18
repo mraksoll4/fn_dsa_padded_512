@@ -4076,9 +4076,7 @@ restart:
 
 /* see falcon.h */
 void
-PQCLEAN_FALCONPADDED512_CLEAN_keygen(inner_shake256_context *rng,
-                                     int8_t *f, int8_t *g, int8_t *F, int8_t *G, uint16_t *h,
-                                     unsigned logn, uint8_t *tmp) {
+PQCLEAN_FALCONPADDED512_CLEAN_keygen(inner_shake256_context *rng, int8_t *f, int8_t *g, int8_t *F, int8_t *G, uint16_t *h, unsigned logn, uint8_t *tmp) {
     /*
      * Algorithm is the following:
      *
