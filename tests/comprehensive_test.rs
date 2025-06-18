@@ -41,6 +41,18 @@ fn print_hex_short(label: &str, data: &[u8], len: usize) {
     println!();
 }
 
+fn print_hex_full(label: &str, data: &[u8]) {
+    println!("{} (full {} bytes):", label, data.len());
+    for (i, byte) in data.iter().enumerate() {
+        if i > 0 && i % 32 == 0 {
+            println!();
+        }
+        print!("{:02x}", byte);
+    }
+    println!();
+    println!();
+}
+
 fn is_all_zeros(data: &[u8]) -> bool {
     data.iter().all(|&x| x == 0)
 }
@@ -471,7 +483,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Test 3: Deterministic generation
     println!("\n=== DETERMINISTIC GENERATION ===");
-    let seed = [0x42u8; constants::SEED_BYTES];
+    let seed = [
+        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+        0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
+        0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+        0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
+        0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x07, 0x18,
+        0x29, 0x3a, 0x4b, 0x5c, 0x6d, 0x7e, 0x8f, 0xaa
+    ];
+    println!("Using fixed seed for cross-implementation comparison:");
     let mut seed1 = seed;
     let mut seed2 = seed;
     
@@ -482,9 +502,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     results.test("seed2 cleared", is_all_zeros(&seed2));
     results.test("deterministic PK", keypair1.public_key.0 == keypair2.public_key.0);
     results.test("deterministic SK", keypair1.secret_key.0 == keypair2.secret_key.0);
-    
+
+    println!("\n--- FIXED SEED KEYS FOR CROSS-IMPLEMENTATION COMPARISON ---");
+    print!("Seed: ");
+    for (i, &byte) in seed.iter().enumerate() {
+        if i > 0 && i % 16 == 0 { println!(); print!("      "); }
+        print!("{:02x}", byte);
+    }
+    println!();
+    print_hex_full("Public Key", &keypair1.public_key.0);
+    print_hex_full("Secret Key", &keypair1.secret_key.0);
+
     test_signatures(&keypair1, "seeded keys", &mut results)?;
-    
+
     // Test 4: Cross-verification
     let test_msg = b"Cross-verification test";
     let sig_from_kp1 = sign_detached(test_msg, &keypair1.secret_key)?;
